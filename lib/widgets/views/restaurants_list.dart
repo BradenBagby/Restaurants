@@ -31,7 +31,10 @@ class RestaurantsListWidget extends StatelessWidget {
                       child: Center(
                           child: state.loading
                               ? CircularProgressIndicator()
-                              : Text("More")));
+                              : Text(
+                                  "More",
+                                  style: TextStyle(color: Colors.white),
+                                )));
             },
             itemCount: state.list.length +
                 (state.loading || state.hasMoreToLoad ? 1 : 0),
