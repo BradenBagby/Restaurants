@@ -29,6 +29,7 @@ class RestaurantWidget extends StatelessWidget {
                 Text(
                   restaurant.name,
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  maxLines: 2,
                 ),
                 Row(
                   children: [...createStars()],

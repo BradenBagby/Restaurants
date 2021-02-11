@@ -1,25 +1,76 @@
+import 'dart:convert';
+import 'dart:developer';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_rest/models/restaurant.dart';
+import 'package:flutter_rest/services/location_service.dart';
+import 'package:http/http.dart' as http;
 
-class RestaurantService {
-  static const String _API_KEY =
+class RestaurantService extends ValueNotifier<RestaurantServiceState> {
+  RestaurantService() : super(null);
+
+  static RestaurantService instance = new RestaurantService();
+
+  static const String API_KEY =
       "_dLkmYnAGPOLV3557sQKsXTPtGUPqZGAOSxj4SU4hGKyVjiAWnpLv_kHVGO5iKsR9l5JczfEds7r1uU71BjJy7KZ9FHNx8_N7rX9PSy7QTDLzmM9_f7oAHGdhpipX3Yx";
-  static const String _CLIENT_ID = "CDdmH-v-4Q9IY3oy6HxcAw";
+  static const String CLIENT_ID = "CDdmH-v-4Q9IY3oy6HxcAw";
+  static const String BASE_URL = "api.yelp.com";
 
-  static List<Restaurant> tests = [
-    new Restaurant(
-        name: "Canes Chicken",
-        rating: 5,
-        image:
-            "https://cdn.vox-cdn.com/thumbor/Mt5RL1j9UHDzwG4DGD7DvCIsnE4=/1400x1050/filters:format(jpeg)/cdn.vox-cdn.com/uploads/chorus_asset/file/20006954/raising_canes_1.jpeg"),
-    new Restaurant(
-        name: "Jack in the Box",
-        rating: 3,
-        image:
-            "https://s3-prod.adage.com/s3fs-public/styles/width_1024/public/jackinthebox_teriyakibowls.jpg"),
-    new Restaurant(
-        name: "Texas Roadhouse",
-        rating: 4,
-        image:
-            "https://www.fsrmagazine.com/sites/default/files/styles/story_image_720x430/public/2020-02/TexasRoadhouseEXT.jpg?itok=nd37u-7e"),
-  ];
+  static RestaurantServiceState _state = new RestaurantServiceState();
+
+  @override
+  RestaurantServiceState get value => _state;
+
+////YELP FUSION--------------------------------
+
+//get header for YELP Requests
+  Map<String, String> _header() {
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $API_KEY',
+    };
+  }
+
+  void fillListWithJson(String jsonString) {
+    final Map<String, dynamic> data = json.decode(jsonString);
+    List<Map<String, dynamic>> businesses =
+        List<Map<String, dynamic>>.from(data["businesses"]);
+    for (Map<String, dynamic> business in businesses) {
+      _state.list.add(new Restaurant(
+          name: business["name"],
+          rating: business["rating"],
+          image: business["image_url"]));
+    }
+  }
+
+  Future<void> loadNearby() async {
+    //TODO: if paginating dont clear
+    _state.list.clear();
+    _state.loading = true;
+    notifyListeners();
+
+    final location = await LocationService.getLocation();
+
+    final params = {
+      'latitude': '${location.latitude}',
+      'longitude': '${location.longitude}',
+    };
+
+    final uri = Uri.https(BASE_URL, '/v3/businesses/search', params);
+
+    final response = await http.get(uri, headers: _header());
+
+    if (response.statusCode == 200) {
+      fillListWithJson(response.body);
+    }
+
+    _state.loading = false;
+    notifyListeners();
+  }
+}
+
+class RestaurantServiceState {
+  bool loading = true;
+  List<Restaurant> list = new List<Restaurant>();
 }
