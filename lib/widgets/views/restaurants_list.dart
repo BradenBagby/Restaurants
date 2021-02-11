@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_rest/models/restaurant.dart';
 import 'package:flutter_rest/services/restaurants_service.dart';
@@ -10,18 +12,36 @@ class RestaurantsListWidget extends StatelessWidget {
         child: ValueListenableBuilder(
       valueListenable: RestaurantService.instance,
       builder: (context, RestaurantServiceState state, widget) {
-        //null means we are loading
-        if (state.loading) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        return ListView.builder(
-          itemBuilder: (context, index) {
-            return RestaurantWidget(state.list[index]);
+        return NotificationListener<ScrollNotification>(
+          onNotification: (scrollInfo) {
+            if (scrollInfo.metrics.pixels ==
+                    scrollInfo.metrics.maxScrollExtent &&
+                state.hasMoreToLoad) {
+              loadMore();
+            }
           },
-          itemCount: state.list.length,
+          child: ListView.builder(
+            itemBuilder: (context, index) {
+              return index < state.list.length
+                  ? RestaurantWidget(state.list[index])
+                  : Container(
+                      height: 50,
+                      width: 50,
+                      padding: EdgeInsets.all(8.0),
+                      child: Center(
+                          child: state.loading
+                              ? CircularProgressIndicator()
+                              : Text("More")));
+            },
+            itemCount: state.list.length +
+                (state.loading || state.hasMoreToLoad ? 1 : 0),
+          ),
         );
       },
     ));
+  }
+
+  void loadMore() {
+    RestaurantService.instance.loadNearby(nextPage: true);
   }
 }

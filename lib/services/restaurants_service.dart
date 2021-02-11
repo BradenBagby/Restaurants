@@ -16,6 +16,8 @@ class RestaurantService extends ValueNotifier<RestaurantServiceState> {
   static const String CLIENT_ID = "CDdmH-v-4Q9IY3oy6HxcAw";
   static const String BASE_URL = "api.yelp.com";
 
+  static const PAGE_SIZE = 20;
+
   static RestaurantServiceState _state = new RestaurantServiceState();
 
   @override
@@ -32,7 +34,8 @@ class RestaurantService extends ValueNotifier<RestaurantServiceState> {
     };
   }
 
-  void fillListWithJson(String jsonString) {
+//returns how many restaurants were added
+  int fillListWithJson(String jsonString) {
     final Map<String, dynamic> data = json.decode(jsonString);
     List<Map<String, dynamic>> businesses =
         List<Map<String, dynamic>>.from(data["businesses"]);
@@ -42,11 +45,18 @@ class RestaurantService extends ValueNotifier<RestaurantServiceState> {
           rating: business["rating"],
           image: business["image_url"]));
     }
+    return businesses.length;
   }
 
-  Future<void> loadNearby() async {
-    //TODO: if paginating dont clear
-    _state.list.clear();
+  Future<void> loadNearby({bool nextPage = false}) async {
+    if (nextPage) {
+      _state.offset += PAGE_SIZE;
+    } else {
+      _state.offset = 0;
+      _state.list.clear();
+    }
+
+    _state.hasMoreToLoad = true;
     _state.loading = true;
     notifyListeners();
 
@@ -55,6 +65,8 @@ class RestaurantService extends ValueNotifier<RestaurantServiceState> {
     final params = {
       'latitude': '${location.latitude}',
       'longitude': '${location.longitude}',
+      'limit': '$PAGE_SIZE',
+      'offset': '${_state.offset}'
     };
 
     final uri = Uri.https(BASE_URL, '/v3/businesses/search', params);
@@ -62,7 +74,11 @@ class RestaurantService extends ValueNotifier<RestaurantServiceState> {
     final response = await http.get(uri, headers: _header());
 
     if (response.statusCode == 200) {
-      fillListWithJson(response.body);
+      if (fillListWithJson(response.body) < PAGE_SIZE) {
+        _state.hasMoreToLoad = false;
+      }
+    } else {
+      _state.hasMoreToLoad = false;
     }
 
     _state.loading = false;
@@ -72,5 +88,7 @@ class RestaurantService extends ValueNotifier<RestaurantServiceState> {
 
 class RestaurantServiceState {
   bool loading = true;
+  bool hasMoreToLoad = true;
+  int offset = 0;
   List<Restaurant> list = new List<Restaurant>();
 }

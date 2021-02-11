@@ -15,8 +15,11 @@ class RestaurantWidget extends StatelessWidget {
             width: 70,
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                image: DecorationImage(
-                    image: NetworkImage(restaurant.image), fit: BoxFit.cover)),
+                image: restaurant.image.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(restaurant.image),
+                        fit: BoxFit.cover)
+                    : null),
           ),
           SizedBox(
             width: 16,
